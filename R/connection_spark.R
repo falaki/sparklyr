@@ -56,7 +56,7 @@ NULL
 #' @export
 spark_connect <- function(master,
                           spark_home = Sys.getenv("SPARK_HOME"),
-                          method = c("shell", "livy", "test"),
+                          method = c("shell", "livy", "test", "databricks"),
                           app_name = "sparklyr",
                           version = NULL,
                           hadoop_version = NULL,
@@ -136,6 +136,9 @@ spark_connect <- function(master,
                             version,
                             hadoop_version ,
                             extensions)
+  } else if (method == "databricks") {
+    scon <- databricks_connection(master = master,
+                                  extensions)
   } else {
     # other methods
 
