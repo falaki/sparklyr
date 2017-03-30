@@ -32,12 +32,7 @@ databricks_connection <- function(extensions = sparklyr::registered_extensions()
                                 open = "wb",
                                 timeout = timeout)
   }, error = function(err) {
-    abort_shell(
-                paste("Failed to open connection to backend:", err$message),
-                "spark_submit_path",
-                shell_args,
-                output_file,
-                error_file)
+    stop(paste("Failed to open connection to backend:", err$message))
   })
 
   # create the databricks connection
