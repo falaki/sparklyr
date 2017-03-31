@@ -7,17 +7,30 @@ shell_connection_validate_config <- function(config) {
   config
 }
 
-databricks_connection <- function(extensions = sparklyr::registered_extensions(), master) {
-  gatewayPort <- as.numeric(SparkR:::callJStatic("com.databricks.backend.daemon.driver.RDriverLocal",
-                                                 "startSparklyr",
-                                                 DATABRICKS_GUID,  # In Databricks notebooks, this variable is in the default namespace
-                                                 system.file("java/", package = "sparklyr"))) # startSparklyr will search & find proper JAR file
+databricks_connection <- function(config,
+                                  extensions = sparklyr::registered_extensions()) {
+  tryCatch({
+    gatewayPort <- as.numeric(SparkR:::callJStatic("com.databricks.backend.daemon.driver.RDriverLocal",
+                                                  "startSparklyr",
+                                                  # In Databricks notebooks, this variable is in the default namespace
+                                                  get("DATABRICKS_GUID", envir = .GlobalEnv),
+                                                  # startSparklyr will search & find proper JAR file
+                                                  system.file("java/", package = "sparklyr")))
+  }, error = function(err) {
+    stop(paste("Failed to start sparklyr backend:", err$message))
+  })
 
-  gatewayInfo <- spark_connect_gateway(gatewayAddress = "localhost",
-                                       gatewayPort = gatewayPort,
-                                       sessionId = gatewayPort,
-                                       config = list(),
-                                       isStarting = TRUE)
+  tryCatch({
+    gatewayInfo <- spark_connect_gateway(gatewayAddress = "localhost",
+                                        gatewayPort = gatewayPort,
+                                        sessionId = gatewayPort,
+                                        config = config,
+                                        isStarting = TRUE)
+  }, error = function(err) {
+    stop(paste("Failed to open connection to sparklyr gateway:", err$message))
+  })
+
+
 
   output_file <- tempfile(fileext = "_spark.log")
   error_file <- tempfile(fileext = "_spark.err")
@@ -32,21 +45,22 @@ databricks_connection <- function(extensions = sparklyr::registered_extensions()
                                 open = "wb",
                                 timeout = timeout)
   }, error = function(err) {
-    stop(paste("Failed to open connection to backend:", err$message))
+    stop(paste("Failed to open connection to sparklyr backend:", err$message))
   })
 
   # create the databricks connection
-  sc <- structure(class = c("shell_connection", "spark_shell_connection"),
-                  list( # spark_connection
-                       master = master,
-                       method = "databricks",
-                       app_name = "Databricks",
-                       config = list(),
-                       # databricks_shell_connection
-                       spark_home = Sys.getenv("SPARK_HOME"),
-                       backend = backend,
-                       monitor = gatewayInfo$gateway,
-                       output_file = output_file))
+  sc <- structure(class = c("spark_connection", "spark_shell_connection"), list(
+    # spark_connection
+    master = "databricks",
+    method = "shell",
+    app_name = "Databricks",
+    config = config,
+    # spark_shell_connection
+    spark_home = Sys.getenv("SPARK_HOME"),
+    backend = backend,
+    monitor = gatewayInfo$gateway,
+    output_file = output_file
+  ))
 
   # stop shell on R exit
   reg.finalizer(baseenv(), function(x) {

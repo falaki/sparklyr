@@ -137,7 +137,7 @@ spark_connect <- function(master,
                             hadoop_version ,
                             extensions)
   } else if (method == "databricks") {
-    scon <- databricks_connection(master = master,
+    scon <- databricks_connection(config = config,
                                   extensions)
   } else {
     # other methods
