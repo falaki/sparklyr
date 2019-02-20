@@ -64,7 +64,8 @@ new_databricks_connection <- function(scon, guid) {
     class = "databricks_connection"
   )
   # In databricks, sparklyr should use the active SparkSession
-  spark_session <- invoke_static(sc, "org.apache.spark.sql.SparkSession", "getActiveSession")
+  session <- "org.apache.spark.sql.SparkSession"
+  spark_session <- invoke_static(sc, session, "getActiveSession") %>% invoke("get")
   sc$state$hive_context <- spark_session
   sc
 }
