@@ -24,7 +24,7 @@ databricks_connection <- function(config, extensions) {
   tryCatch({
     databricks_expand_jars()
 
-    callSparkR <- get("callJStatic", envir = asNamespace("SparkR"))
+    callSparkR <- get("sparkR.callJStatic", envir = asNamespace("SparkR"))
     # In Databricks environments (notebooks & rstudio) DATABRICKS_GUID is in the default namespace
     guid <- get("DATABRICKS_GUID", envir = .GlobalEnv)
     gatewayPort <- as.numeric(callSparkR("com.databricks.backend.daemon.driver.RDriverLocal",
@@ -63,10 +63,8 @@ new_databricks_connection <- function(scon, guid) {
     scon,
     class = "databricks_connection"
   )
-  # In databricks, sparklyr should use the SqlContext associated with the RDriverLocal instance for
-  # this guid.
-  r_driver_local <- "com.databricks.backend.daemon.driver.RDriverLocal"
-  hive_context <- invoke_static(sc, r_driver_local, "getDriver", guid) %>% invoke("sqlContext")
-  sc$state$hive_context <- hive_context
+  # In databricks, sparklyr should use the active SparkSession
+  spark_session <- invoke_static(sc, "org.apache.spark.sql.SparkSession", "getActiveSession")
+  sc$state$hive_context <- spark_session
   sc
 }
